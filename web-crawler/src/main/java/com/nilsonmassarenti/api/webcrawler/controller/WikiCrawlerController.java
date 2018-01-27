@@ -7,6 +7,7 @@ import java.util.List;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
+import org.jsoup.select.Elements;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -132,19 +133,38 @@ public class WikiCrawlerController {
 			Integer endPos = html.substring(initPos).indexOf("</tr>\n" + 
 					"<tr>");
 			String responseSpouse = html.substring(initPos, initPos+endPos);
-			Document doc = Jsoup.parse(responseSpouse);
-			Element link = doc.select("a").first();
-			Person spouse = new Person();
+			//responseSpouse = responseSpouse.substring(responseSpouse.indexOf("<ul>"), responseSpouse.indexOf("</ul>")+4);
 			
-			String name = link.attr("title");
-			String linkSpouse = link.attr("href");
-			spouse.setName(name);
-			spouse.setLink(linkSpouse);
-			if (spouse.getName().equals("") || spouse.getLink().equals("")) {
-				return null;
-			} else {
-				return spouse;
+			responseSpouse = responseSpouse.substring(responseSpouse.indexOf("<td>"), responseSpouse.indexOf("</td>")+5);
+			
+			Document doc = Jsoup.parse(responseSpouse);
+			Elements elements = doc.select("span");
+			Person spouse = new Person();
+			for (Element e : elements) {
+				if (!e.toString().contains("<abbr title=\"divorced\"") && !e.toString().contains("<abbr title=\"died\">") ) {
+					Document docE = Jsoup.parse(e.toString());
+					Element link = docE.select("a").first();
+					
+					String name = link.attr("title");
+					String linkSpouse = link.attr("href");
+					spouse.setName(name);
+					spouse.setLink(linkSpouse);
+					break;
+				}
+
 			}
+			
+			if (spouse.getName() != null) {
+				if (spouse.getName().equals("") || spouse.getLink().equals("")) {
+					return null;
+				} else {
+					return spouse;
+				}
+			} else {
+				return null;
+			}
+			
+			
 		} else {
 			return null;
 		}
