@@ -92,19 +92,22 @@ public class WikiCrawlerController {
 			
 			List<Person> sameChildren = new ArrayList<>();
 			
-			for (Person personChildrenCompare : person.getChilden()) {
-				for (Person spouseChildrenCompare : person.getSpouse().getChilden()) {
-					if (personChildrenCompare.getName() != null && spouseChildrenCompare.getName() != null) {
-						if (personChildrenCompare.getName().equals(spouseChildrenCompare.getName())) {
-							sameChildren.add(personChildrenCompare);
-						}
-					} else if(personChildrenCompare.getLink() != null && spouseChildrenCompare.getLink() != null) {
-						if (personChildrenCompare.getLink().equals(spouseChildrenCompare.getLink())) {
-							sameChildren.add(personChildrenCompare);
+			if (person.getChilden() != null) {
+				for (Person personChildrenCompare : person.getChilden()) {
+					for (Person spouseChildrenCompare : person.getSpouse().getChilden()) {
+						if (personChildrenCompare.getName() != null && spouseChildrenCompare.getName() != null) {
+							if (personChildrenCompare.getName().equals(spouseChildrenCompare.getName())) {
+								sameChildren.add(personChildrenCompare);
+							}
+						} else if(personChildrenCompare.getLink() != null && spouseChildrenCompare.getLink() != null) {
+							if (personChildrenCompare.getLink().equals(spouseChildrenCompare.getLink())) {
+								sameChildren.add(personChildrenCompare);
+							}
 						}
 					}
 				}
 			}
+			
 			personInformation.setSameChildren(sameChildren);
 			
 		}
@@ -129,6 +132,9 @@ public class WikiCrawlerController {
 	private Person getSpouseDetail(String html) {
 		Integer initPos = html.indexOf("<tr>\n" + 
 				"<th scope=\"row\">Spouse(s)</th>");
+		if (initPos == -1) {
+			initPos = html.indexOf("<th scope=\"row\"><span class=\"nowrap\">Spouse(s)</span></th>");
+		}
 		if (initPos != -1) {
 			Integer endPos = html.substring(initPos).indexOf("</tr>\n" + 
 					"<tr>");
