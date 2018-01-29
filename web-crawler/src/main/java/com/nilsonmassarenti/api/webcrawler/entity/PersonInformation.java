@@ -2,49 +2,83 @@ package com.nilsonmassarenti.api.webcrawler.entity;
 
 import java.util.List;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import com.fasterxml.jackson.annotation.JsonIgnore;
+
 public class PersonInformation {
 	private Person person;
 	private Person spouse;
 	private Boolean isSpouse;
-	private List<Person> sameChildren;
-	private List<Person> personChildren;
-	private List<Person> spouseChildren;
-	
+	private List<String> children;
+	private Boolean allChildrenMatch;
+
 	public Person getPerson() {
 		return person;
 	}
+
 	public void setPerson(Person person) {
 		this.person = person;
 	}
+
 	public Person getSpouse() {
 		return spouse;
 	}
+
 	public void setSpouse(Person spouse) {
 		this.spouse = spouse;
 	}
+
 	public Boolean getIsSpouse() {
 		return isSpouse;
 	}
+
 	public void setIsSpouse(Boolean isSpouse) {
 		this.isSpouse = isSpouse;
 	}
-	public List<Person> getSameChildren() {
-		return sameChildren;
+
+	public List<String> getChildren() {
+		return children;
 	}
-	public void setSameChildren(List<Person> sameChildren) {
-		this.sameChildren = sameChildren;
+
+	public void setChildren(List<String> children) {
+		this.children = children;
 	}
-	public List<Person> getPersonChildren() {
-		return personChildren;
+
+	public Boolean getAllChildrenMatch() {
+		return allChildrenMatch;
 	}
-	public void setPersonChildren(List<Person> personChildren) {
-		this.personChildren = personChildren;
+
+	public void setAllChildrenMatch(Boolean allChildrenMatch) {
+		this.allChildrenMatch = allChildrenMatch;
 	}
-	public List<Person> getSpouseChildren() {
-		return spouseChildren;
+
+	@JsonIgnore
+	public JSONObject getJson() {
+
+		JSONObject json = new JSONObject();
+
+		
+		try {
+			JSONObject person = new JSONObject();
+			person.put("name", this.person.getName());
+			person.put("link", this.person.getLink());
+			json.put("person", person);
+
+			JSONObject spouse = new JSONObject();
+			spouse.put("name", this.spouse.getName());
+			spouse.put("link", this.spouse.getLink());
+			json.put("spouse", spouse);
+
+			json.put("isSpouse", this.isSpouse);
+			json.put("children", this.children);
+			json.put("allChildrenMatch", this.allChildrenMatch);
+		} catch (JSONException e) {
+			e.printStackTrace();
+			return null;
+		}
+		return json;
 	}
-	public void setSpouseChildren(List<Person> spouseChildren) {
-		this.spouseChildren = spouseChildren;
-	}
-	
+
 }

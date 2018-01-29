@@ -1,6 +1,5 @@
 package com.nilsonmassarenti.api.webcrawler.controller;
 
-
 import java.util.ArrayList;
 import java.util.List;
 
@@ -29,6 +28,13 @@ public class WikiCrawlerController {
 	@Autowired
 	private HttpRequest httpRequest;
 
+	/**
+	 * This method is a rest to get information from wikipedia
+	 * 
+	 * @param linkPerson
+	 * @param language
+	 * @return error or Person Information
+	 */
 	@RequestMapping(value = "/spouse/{linkPerson}/{language}", method = RequestMethod.GET)
 	public ResponseEntity<?> getSpouse(@PathVariable("linkPerson") String linkPerson,
 			@PathVariable("language") String language) {
@@ -46,7 +52,7 @@ public class WikiCrawlerController {
 		if (!link.equals("")) {
 			String responseHtml = httpRequest.getHtml(link);
 			if (responseHtml != null) {
-				
+
 				person.setName(getPersonDetail(responseHtml));
 				if (person.getName() != null) {
 					List<Person> children = getChildren(responseHtml);
@@ -78,47 +84,75 @@ public class WikiCrawlerController {
 				message.setMessage("Invalid Link");
 			}
 		}
-		
+
 		PersonInformation personInformation = new PersonInformation();
 		if (message.getMessage() == null) {
-			personInformation.setPerson(person);
-			personInformation.setSpouse(person.getSpouse());
-			
+
+			person.setLink("/wiki/" + linkPerson);
 			if (person.getSpouse().getSpouse().getName().equals(person.getSpouse().getName())) {
 				personInformation.setIsSpouse(true);
 			} else {
 				personInformation.setIsSpouse(true);
 			}
-			
+
 			List<Person> sameChildren = new ArrayList<>();
-			
-			if (person.getChilden() != null) {
-				for (Person personChildrenCompare : person.getChilden()) {
-					for (Person spouseChildrenCompare : person.getSpouse().getChilden()) {
-						if (personChildrenCompare.getName() != null && spouseChildrenCompare.getName() != null) {
-							if (personChildrenCompare.getName().equals(spouseChildrenCompare.getName())) {
-								sameChildren.add(personChildrenCompare);
+			List<String> children = new ArrayList<>();
+
+			if (person.getChilden() != null && person.getSpouse().getChilden() != null) {
+				personInformation.setAllChildrenMatch(true);
+				if (person.getChilden().size() != person.getSpouse().getChilden().size()) {
+					personInformation.setAllChildrenMatch(false);
+				} else {
+					Boolean child;
+					if (person.getChilden() != null) {
+						for (Person personChildrenCompare : person.getChilden()) {
+							child = false;
+							for (Person spouseChildrenCompare : person.getSpouse().getChilden()) {
+								if (personChildrenCompare.getName() != null
+										&& spouseChildrenCompare.getName() != null) {
+									if (personChildrenCompare.getName().equals(spouseChildrenCompare.getName())) {
+										sameChildren.add(personChildrenCompare);
+										child = true;
+										children.add(personChildrenCompare.getName());
+										break;
+									}
+								} else if (personChildrenCompare.getLink() != null
+										&& spouseChildrenCompare.getLink() != null) {
+									if (personChildrenCompare.getLink().equals(spouseChildrenCompare.getLink())) {
+										sameChildren.add(personChildrenCompare);
+										child = true;
+										;
+										children.add(personChildrenCompare.getName());
+										break;
+									}
+								}
 							}
-						} else if(personChildrenCompare.getLink() != null && spouseChildrenCompare.getLink() != null) {
-							if (personChildrenCompare.getLink().equals(spouseChildrenCompare.getLink())) {
-								sameChildren.add(personChildrenCompare);
+							if (child == false) {
+								personInformation.setAllChildrenMatch(false);
 							}
 						}
 					}
 				}
+				personInformation.setChildren(children);
 			}
-			
-			personInformation.setSameChildren(sameChildren);
-			
+
+			personInformation.setPerson(person);
+			personInformation.setSpouse(person.getSpouse());
+
 		}
 
 		if (message.getMessage() == null) {
-			return new ResponseEntity<PersonInformation>(personInformation, HttpStatus.OK);
+			return new ResponseEntity<String>(personInformation.getJson().toString(), HttpStatus.OK);
 		} else {
 			return new ResponseEntity<Message>(message, HttpStatus.FORBIDDEN);
 		}
 	}
-	
+
+	/**
+	 * This method is responsible to get Person Details
+	 * @param html
+	 * @return String
+	 */
 	private String getPersonDetail(String html) {
 		Document doc = Jsoup.parse(html);
 		String name = doc.title();
@@ -128,29 +162,30 @@ public class WikiCrawlerController {
 			return name.replace(" - Wikipedia", "");
 		}
 	}
-	
+
 	private Person getSpouseDetail(String html) {
-		Integer initPos = html.indexOf("<tr>\n" + 
-				"<th scope=\"row\">Spouse(s)</th>");
+		Integer initPos = html.indexOf("<tr>\n" + "<th scope=\"row\">Spouse(s)</th>");
 		if (initPos == -1) {
 			initPos = html.indexOf("<th scope=\"row\"><span class=\"nowrap\">Spouse(s)</span></th>");
 		}
 		if (initPos != -1) {
-			Integer endPos = html.substring(initPos).indexOf("</tr>\n" + 
-					"<tr>");
-			String responseSpouse = html.substring(initPos, initPos+endPos);
-			//responseSpouse = responseSpouse.substring(responseSpouse.indexOf("<ul>"), responseSpouse.indexOf("</ul>")+4);
-			
-			responseSpouse = responseSpouse.substring(responseSpouse.indexOf("<td>"), responseSpouse.indexOf("</td>")+5);
-			
+			Integer endPos = html.substring(initPos).indexOf("</tr>\n" + "<tr>");
+			String responseSpouse = html.substring(initPos, initPos + endPos);
+			// responseSpouse = responseSpouse.substring(responseSpouse.indexOf("<ul>"),
+			// responseSpouse.indexOf("</ul>")+4);
+
+			responseSpouse = responseSpouse.substring(responseSpouse.indexOf("<td>"),
+					responseSpouse.indexOf("</td>") + 5);
+
 			Document doc = Jsoup.parse(responseSpouse);
 			Elements elements = doc.select("span");
 			Person spouse = new Person();
 			for (Element e : elements) {
-				if (!e.toString().contains("<abbr title=\"divorced\"") && !e.toString().contains("<abbr title=\"died\">") ) {
+				if (!e.toString().contains("<abbr title=\"divorced\"")
+						&& !e.toString().contains("<abbr title=\"died\">")) {
 					Document docE = Jsoup.parse(e.toString());
 					Element link = docE.select("a").first();
-					
+
 					String name = link.attr("title");
 					String linkSpouse = link.attr("href");
 					spouse.setName(name);
@@ -159,7 +194,7 @@ public class WikiCrawlerController {
 				}
 
 			}
-			
+
 			if (spouse.getName() != null) {
 				if (spouse.getName().equals("") || spouse.getLink().equals("")) {
 					return null;
@@ -169,46 +204,48 @@ public class WikiCrawlerController {
 			} else {
 				return null;
 			}
-			
-			
+
 		} else {
 			return null;
 		}
 	}
-	
-	private List<Person> getChildren(String html){
-		
+
+	/**
+	 * This method is responsible to get Children from html generated by http request on wikipedia
+	 * @param html
+	 * @return List of persons
+	 */
+	private List<Person> getChildren(String html) {
+
 		List<Person> listChildren = new ArrayList<Person>();
-		
-		Integer initPos = html.indexOf("<tr>\n" + 
-				"<th scope=\"row\">Children</th>");
+
+		Integer initPos = html.indexOf("<tr>\n" + "<th scope=\"row\">Children</th>");
 		if (initPos != -1) {
-			Integer endPos = html.substring(initPos).indexOf("</tr>\n" + 
-					"<tr>");
-			String responseChildren = html.substring(initPos, initPos+endPos);
-			responseChildren = responseChildren.substring(responseChildren.indexOf("<td>")+4, responseChildren.indexOf("</td>"));
+			Integer endPos = html.substring(initPos).indexOf("</tr>\n" + "<tr>");
+			String responseChildren = html.substring(initPos, initPos + endPos);
+			responseChildren = responseChildren.substring(responseChildren.indexOf("<td>") + 4,
+					responseChildren.indexOf("</td>"));
 			String[] arrayChildren = responseChildren.split("<br />");
-			
+
 			for (String child : arrayChildren) {
 				Person childPerson = new Person();
-				if (child.indexOf("<a href=") >=0 ) {
+				if (child.indexOf("<a href=") >= 0) {
 					Document doc = Jsoup.parse(child);
 					Element link = doc.select("a").first();
 					String name = link.attr("title");
 					String linkChild = link.attr("href");
 					childPerson.setName(name);
 					childPerson.setLink(linkChild);
-					
+
 				} else {
 					childPerson.setName(child);
 				}
 				listChildren.add(childPerson);
-			}			
+			}
 		} else {
 			return null;
 		}
 		return listChildren;
 	}
-	
 
 }
